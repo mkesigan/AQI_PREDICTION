@@ -19,7 +19,7 @@ This project predicts **AQI Categories** (Good, Moderate, Unhealthy, etc.) using
 ## ⚡ How to Run
 ```bash
 # Clone repo
-git clone https://github.com/yourusername/AQI_PREDICTION.git
+git clone https://github.com/mkesigan/AQI_PREDICTION
 cd AQI_PREDICTION
 
 # Install dependencies
