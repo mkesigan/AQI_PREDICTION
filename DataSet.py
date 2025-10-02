@@ -4,15 +4,15 @@ import os, time, requests, pandas as pd
 WAQI_TOKEN = os.getenv("WAQI_TOKEN", "ac3baf8cb4ba2298d3bd1a0cc9bdd4057cf6fafc")
 OUT_CSV = "waqi_global_dataset_timeseries.csv"
 
-# sleep between station feed requests (be polite to API)
+
 SLEEP_FEED = 0.35
-# sleep between rounds (minutes). Lower is faster, higher is safer.
+
 SLEEP_BETWEEN_ROUNDS_MIN = 5
 TARGET_RECORDS = 12000
 
 BASE = "https://api.waqi.info"
 
-# Small world-coverage grid of bounds (tune if needed)
+
 TILES = []
 for s in range(-60, 61, 20):      # latitude bands
     for w in range(-180, 181, 30): # longitude bands
