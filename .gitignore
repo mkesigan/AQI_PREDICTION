@@ -13,8 +13,6 @@ env/
 *.csv
 *.xlsx
 
-# Model files (optional if large)
-*.pkl
 
 # IDE files
 .idea/
