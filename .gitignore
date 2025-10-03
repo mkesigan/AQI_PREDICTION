@@ -9,9 +9,7 @@ env/
 # Streamlit cache
 .streamlit/
 
-# Data files (optional, if too large)
-*.csv
-*.xlsx
+
 
 
 # IDE files
