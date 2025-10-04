@@ -5,6 +5,12 @@ import altair as alt
 import pydeck as pdk
 import os
 import hashlib
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, KeepInFrame
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+import datetime, io
+
 
 
 # Utility: Password Hashing
@@ -268,23 +274,127 @@ else:
                 st.pydeck_chart(r, use_container_width=True, height=350)
 
    
-    # BATCH PREDICTION
-    
-    with tab2:
-        st.subheader("📂 Upload CSV/XLSX for Batch Prediction")
-        uploaded = st.file_uploader("Upload file", type=["csv", "xlsx"])
-        if uploaded:
-            data = pd.read_csv(uploaded) if uploaded.name.endswith(".csv") else pd.read_excel(uploaded)
-            st.dataframe(data.head())
-            preds = model.predict(data)
-            categories = le.inverse_transform(preds)
-            results = data.copy()
-            results["Predicted_AQI_Category"] = categories
-            results["Explanation"] = results["Predicted_AQI_Category"].apply(
-                lambda c: f"AQI falls in {c} range {AQI_RANGES.get(c,(0,0))}"
-            )
-            results["Recommendations"] = results["Predicted_AQI_Category"].apply(
-                lambda c: " | ".join(RECOMMENDATIONS[c])
-            )
-            st.dataframe(results.head())
-            st.download_button("📥 Download Results", results.to_csv(index=False), "aqi_batch_results.csv", "text/csv")
+    def generate_pdf(results, filename="aqi_batch_report.pdf"):
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=20,
+            leftMargin=20,
+            topMargin=20,
+            bottomMargin=20
+        )
+        styles = getSampleStyleSheet()
+        normal_style = styles["Normal"]
+        normal_style.fontSize = 9   
+        normal_style.leading = 11
+
+        elements = []
+
+        # Title
+        elements.append(Paragraph("🌍 AQI Prediction Report", styles['Title']))
+        elements.append(
+            Paragraph(f"Generated on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal'])
+        )
+        elements.append(Spacer(1, 12))
+
+        # Prepare table data
+        table_data = [results.columns.to_list()]
+
+        for _, row in results.iterrows():
+            row_list = []
+            for col, val in row.items():
+                if col == "Recommendations":
+                    rec_text = "<br/>".join(str(val).split(" | "))
+                    row_list.append(Paragraph(rec_text, normal_style))
+                elif col == "Explanation":
+                    exp_text = str(val)
+                    row_list.append(Paragraph(exp_text, normal_style))
+                else:
+                    row_list.append(Paragraph(str(val), normal_style))
+            table_data.append(row_list)
+
+        # Dynamically adjust colWidths
+        page_width = A4[0] - 10  
+        num_cols = len(results.columns)
+
+        col_widths = []
+        for col in results.columns:
+            if col == "Recommendations":
+                col_widths.append(page_width * 0.30)
+            elif col == "Explanation":
+                col_widths.append(page_width * 0.17)
+            elif col == "Predicted_AQI_Category":
+                col_widths.append(page_width * 0.20)  # give more space to category
+            else:
+                col_widths.append(page_width * 0.33 / (len(results.columns) - 3))  
+
+        # Build table
+        table = Table(table_data, repeatRows=1, colWidths=col_widths)
+
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.darkblue),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("ALIGN", (0,0), (-1,0), "CENTER"),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+            ("FONTSIZE", (0,0), (-1,-1), 9),
+            ("BACKGROUND", (0,1), (-1,-1), colors.whitesmoke),
+        ]))
+
+        # Keep table inside margins
+        elements.append(KeepInFrame(page_width, A4[1]-30, [table], hAlign="CENTER"))
+        doc.build(elements)
+
+        buffer.seek(0)
+        return buffer
+
+
+
+# Inside your batch prediction tab
+
+with tab2:
+    st.subheader("📂 Upload CSV/XLSX for Batch Prediction")
+    uploaded = st.file_uploader("Upload file", type=["csv", "xlsx"])
+
+    if uploaded is not None:
+        if uploaded.name.endswith(".csv"):
+            data = pd.read_csv(uploaded)
+        else:
+            data = pd.read_excel(uploaded)
+
+        st.markdown("### 📊 Preview of Uploaded Data")
+        st.dataframe(data.head())
+
+        # Predictions
+        preds = model.predict(data)
+        categories = le.inverse_transform(preds)
+
+        results = data.copy()
+        results["Predicted_AQI_Category"] = categories
+        results["Explanation"] = results["Predicted_AQI_Category"].apply(
+            lambda c: f"AQI falls in {c} range {AQI_RANGES.get(c,(0,0))}"
+        )
+        results["Recommendations"] = results["Predicted_AQI_Category"].apply(
+            lambda c: " | ".join(RECOMMENDATIONS.get(c, ["No recommendation available"]))
+        )
+
+        st.markdown("### 📊 Prediction Results")
+        st.dataframe(results.head())
+
+        # CSV Download
+        st.download_button(
+            "📥 Download CSV Results",
+            results.to_csv(index=False),
+            "aqi_batch_results.csv",
+            "text/csv"
+        )
+
+        # PDF Download
+        pdf_buffer = generate_pdf(results)
+        st.download_button(
+            "📑 Download PDF Report",
+            data=pdf_buffer,
+            file_name="aqi_batch_report.pdf",
+            mime="application/pdf"
+        )
