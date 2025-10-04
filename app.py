@@ -65,19 +65,45 @@ AQI_RANGES = {
 }
 
 RECOMMENDATIONS = {
-    "Good": ["Air quality is satisfactory; no precautions needed.", "Encourage outdoor activities."],
-    "Moderate": ["Air quality is acceptable, but sensitive groups may be affected.",
-                 "Children, elderly, and asthma patients should reduce heavy outdoor activity."],
-    "Unhealthy for Sensitive": ["Sensitive people should wear masks outdoors.",
-                                "Schools should reduce outdoor sports activities."],
-    "Unhealthy": ["Everyone may begin to experience health effects.",
-                  "Avoid jogging or cycling outdoors.",
-                  "Use air purifiers indoors."],
-    "Very Unhealthy": ["Serious health risk; avoid outdoor activities.",
-                       "Hospitals should prepare for more respiratory cases."],
-    "Hazardous": ["Emergency conditions; entire population affected.",
-                  "Government advisories: close schools and offices if necessary."]
+    "Good": [
+        "Air quality is satisfactory; no major risk to health.",
+        "Encourage outdoor activities to promote healthy lifestyle."
+    ],
+    "Moderate": [
+        "Air quality is acceptable but may pose risk for sensitive groups.",
+        "Sensitive individuals (children, elderly, asthmatics) should limit prolonged outdoor exertion.",
+        "Government and city planners should monitor pollution trends."
+    ],
+    "Unhealthy for Sensitive": [
+        "Sensitive groups (children, elderly, people with lung disease) may experience health effects.",
+        "Limit prolonged outdoor exertion, especially for sensitive individuals.",
+        "General public not likely to be affected yet."
+    ],
+    "Unhealthy": [
+        "Everyone may begin to experience health effects.",
+        "Avoid jogging or cycling outdoors; stay indoors during peak hours.",
+        "Use air purifiers indoors and wear N95 masks if outdoors.",
+        "Schools should reduce outdoor activities for children."
+    ],
+    "Very Unhealthy": [
+        "Health alert: everyone may experience serious health effects.",
+        "Avoid outdoor activities completely if possible.",
+        "Governments should issue public health warnings.",
+        "Use high-grade air purifiers indoors."
+    ],
+    "Hazardous": [
+        "Health warnings of emergency conditions.",
+        "Entire population more likely to be affected.",
+        "Immediate government intervention required (close schools, restrict traffic, suspend industries)."
+    ],
+    "Unknown": [
+        "Prediction does not match standard AQI categories.",
+        "Recheck input data or monitoring device.",
+        "Consult environmental authorities for further investigation."
+    ]
 }
+
+
 
 
 # Session State Init
@@ -167,8 +193,36 @@ else:
             category = le.inverse_transform(pred)[0]
             cat_range = AQI_RANGES.get(category, (0,0))
 
+            # --- AQI Value (simple weighted calculation) ---
+            aqi_value = int(sum([pm25*0.4, pm10*0.3, no2*0.15, co*0.1, temp_c*0.05]))
+
+            # --- Display results ---
             st.markdown(f"### ✅ Predicted Category: **{category}**")
-            st.markdown(f"**AQI Range for {category}: {cat_range[0]}–{cat_range[1]}**")
+            st.markdown(f"**Predicted AQI Value: {aqi_value}**")
+            st.markdown(f"**AQI Range for {category}: {cat_range[0]} – {cat_range[1]}**")
+
+            st.markdown(
+                f"""
+                <div style="
+                    background-color:#e6f2ff; 
+                    padding:15px; 
+                    border-radius:8px; 
+                    border-left:6px solid #1f77b4;
+                    font-size:16px;
+                    color:#1a1a1a;
+                ">
+                <b>Explanation:</b> This means the air quality is classified as 
+                <span style="color:#d9534f;"><b>{category}</b></span>.  
+                An AQI of <b>{aqi_value}</b> falls into the range <b>{cat_range[0]}–{cat_range[1]}</b>,  
+                which justifies the prediction. Health risks depend on pollutant exposure,  
+                and sensitive groups may experience more serious effects.
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
+            # --- Recommendations ---
             st.markdown("### 🛠 Recommendations")
             for rec in RECOMMENDATIONS[category]:
                 st.write(f"- {rec}")
@@ -176,6 +230,8 @@ else:
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.markdown("### 📊 Prediction Probabilities")
+                st.markdown(" ")
+                st.markdown(" ")
                 prob_df = pd.DataFrame({"Category": le.classes_, "Probability": probs})
                 st.altair_chart(
                     alt.Chart(prob_df).mark_bar().encode(
