@@ -154,14 +154,61 @@ if not st.session_state.logged_in:
 # AQI Prediction App (After Login)
 
 else:
-    # ---- CSS Styling ----
+            # ---- CSS Styling ----
     st.markdown(
         """
         <style>
         .stApp { background-color: #ffffff; color: #333333; }
+        /* Style download buttons to have white text */
+        .stDownloadButton button {
+            color: white !important;
+            font-weight: bold;
+        }
+
+        .stDownloadButton button div p {
+            color: white !important;
+        }
         section[data-testid="stSidebar"] { background-color: #2c2f38; }
         section[data-testid="stSidebar"] * { color: #ffffff; }
         .block-container { max-width: 95%; padding-left: 2rem; padding-right: 2rem; }
+        
+        /* Change specific font colors to black */
+        h1 { color: #000000 !important; }
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p { color: #000000 !important; }
+        h3 { color: #000000 !important; }
+        
+        /* Change tab panel background and text colors */
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: #f0f2f6;
+            border-radius: 8px;
+            padding: 8px;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            background-color: #f0f2f6;
+            border-radius: 4px;
+            padding: 10px 16px;
+            margin: 0 4px;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background-color: #1f77b4 !important;
+            color: white !important;
+        }
+        
+        .stTabs [aria-selected="true"] [data-testid="stMarkdownContainer"] p {
+            color: white !important;
+            font-weight: bold;
+        }
+        
+        .stTabs [aria-selected="false"] {
+            background-color: #e6e6e6;
+            color: #000000 !important;
+        }
+        
+        .stTabs [aria-selected="false"] [data-testid="stMarkdownContainer"] p {
+            color: #000000 !important;
+        }
         </style>
         """, unsafe_allow_html=True
     )
@@ -175,13 +222,13 @@ else:
     st.title("🌍 Air Quality Index (AQI) Prediction Dashboard")
     st.markdown("This tool predicts **AQI Category** based on pollutant and weather measurements.")
 
-    tab1, tab2 = st.tabs(["🔮 Single Prediction", "📂 Batch Prediction"])
+    tab1, tab2 = st.tabs(["⚡ Single Prediction", "📂 Batch Prediction"])
 
     
     # SINGLE PREDICTION
    
     with tab1:
-        st.sidebar.header("🔧 Input Parameters")
+        st.sidebar.header("🎯 Set Your Parameters")
         pm25 = st.sidebar.number_input("PM2.5 (µg/m³)", 0.0, 500.0, 0.1)
         pm10 = st.sidebar.number_input("PM10 (µg/m³)", 0.0, 600.0, 0.1)
         no2 = st.sidebar.number_input("NO₂ (µg/m³)", 0.0, 400.0, 0.1)
@@ -202,8 +249,34 @@ else:
             # --- AQI Value (simple weighted calculation) ---
             aqi_value = int(sum([pm25*0.4, pm10*0.3, no2*0.15, co*0.1, temp_c*0.05]))
 
-            # --- Display results ---
-            st.markdown(f"### ✅ Predicted Category: **{category}**")
+            # After prediction, replace the display code with this:
+
+            # --- Display results with colored signs ---
+            category_colors = {
+                "Good": "🟢",
+                "Moderate": "🟡",
+                "Unhealthy for Sensitive": "🟠",
+                "Unhealthy": "🔴",
+                "Very Unhealthy": "🟣",
+                "Hazardous": "🟤",
+                "Unknown": "⚫"
+            }
+
+            category_icons = {
+                "Good": "✅",
+                "Moderate": "⚠️",
+                "Unhealthy for Sensitive": "😷",
+                "Unhealthy": "❗",
+                "Very Unhealthy": "🚨",
+                "Hazardous": "☠️",
+                "Unknown": "❓"
+            }
+
+            # Choose which style you prefer (colors or icons) - using colors here
+            sign = category_colors.get(category, "⚫")
+            # OR use icons: sign = category_icons.get(category, "❓")
+
+            st.markdown(f"### {sign} Predicted Category: **{category}**")
             st.markdown(f"**Predicted AQI Value: {aqi_value}**")
             st.markdown(f"**AQI Range for {category}: {cat_range[0]} – {cat_range[1]}**")
 
@@ -226,13 +299,80 @@ else:
                 """,
                 unsafe_allow_html=True
             )
+#1111111111111111111111111111
+            # --- ENHANCED RECOMMENDATIONS SECTION ---
+            st.markdown("### 🛠 Health & Safety Recommendations")
 
+            # Category-specific color coding
+            category_styles = {
+                "Good": {"color": "#28a745", "bg_color": "#f8fff9", "border_color": "#28a745", "icon": "✅"},
+                "Moderate": {"color": "#ffc107", "bg_color": "#fffdf4", "border_color": "#ffc107", "icon": "⚠️"},
+                "Unhealthy for Sensitive": {"color": "#fd7e14", "bg_color": "#fff8f0", "border_color": "#fd7e14", "icon": "😷"},
+                "Unhealthy": {"color": "#dc3545", "bg_color": "#fff5f5", "border_color": "#dc3545", "icon": "❗"},
+                "Very Unhealthy": {"color": "#6f42c1", "bg_color": "#f8f5ff", "border_color": "#6f42c1", "icon": "🚨"},
+                "Hazardous": {"color": "#e83e8c", "bg_color": "#fff5f9", "border_color": "#e83e8c", "icon": "☠️"},
+                "Unknown": {"color": "#6c757d", "bg_color": "#f8f9fa", "border_color": "#6c757d", "icon": "❓"}
+            }
 
-            # --- Recommendations ---
-            st.markdown("### 🛠 Recommendations")
-            for rec in RECOMMENDATIONS[category]:
-                st.write(f"- {rec}")
+            style = category_styles.get(category, category_styles["Unknown"])
 
+            # Create a beautiful recommendations container
+            st.markdown(
+                f"""
+                <div style="
+                    background-color: {style['bg_color']};
+                    border: 2px solid {style['border_color']};
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin: 15px 0;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                ">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 24px; margin-right: 10px;">{style['icon']}</span>
+                    <h4 style="color: {style['color']}; margin: 0;">Recommended Actions for {category} Air Quality</h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            # Display recommendations with better styling
+            recommendations = RECOMMENDATIONS[category]
+
+            for i, rec in enumerate(recommendations, 1):
+                st.markdown(
+                    f"""
+                    <div style="
+                        background: white;
+                        margin: 10px 0;
+                        padding: 12px 15px;
+                        border-radius: 8px;
+                        border-left: 4px solid {style['color']};
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                        display: flex;
+                        align-items: flex-start;
+                    ">
+                    <span style="
+                        background-color: {style['color']};
+                        color: white;
+                        border-radius: 50%;
+                        width: 24px;
+                        height: 24px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 12px;
+                        font-weight: bold;
+                        margin-right: 12px;
+                        flex-shrink: 0;
+                    ">{i}</span>
+                    <span style="color: #333; line-height: 1.4;">{rec}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            st.markdown("</div>", unsafe_allow_html=True)
+#11111111111111111111111111
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.markdown("### 📊 Prediction Probabilities")
@@ -268,10 +408,10 @@ else:
                 map_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
                 view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=6, pitch=0)
                 layer = pdk.Layer("ScatterplotLayer", data=map_df,
-                                  get_position='[lon, lat]', get_color='[200, 30, 0, 160]', get_radius=40000)
+                                get_position='[lon, lat]', get_color='[200, 30, 0, 160]', get_radius=40000)
                 r = pdk.Deck(layers=[layer], initial_view_state=view_state,
-                             tooltip={"text": "📍 {lat}, {lon}"})
-                st.pydeck_chart(r, use_container_width=True, height=350)
+                            tooltip={"text": "📍 {lat}, {lon}"})
+                st.pydeck_chart(r, use_container_width=True)  # Removed height parameter
 
    
     def generate_pdf(results, filename="aqi_batch_report.pdf"):
@@ -390,7 +530,7 @@ with tab2:
             "text/csv"
         )
 
-        # PDF Download
+        # PDF Download - FIXED: Define pdf_buffer here
         pdf_buffer = generate_pdf(results)
         st.download_button(
             "📑 Download PDF Report",
