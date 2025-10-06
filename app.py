@@ -299,7 +299,7 @@ else:
                 """,
                 unsafe_allow_html=True
             )
-#1111111111111111111111111111
+
             # --- ENHANCED RECOMMENDATIONS SECTION ---
             st.markdown("### 🛠 Health & Safety Recommendations")
 
@@ -372,20 +372,56 @@ else:
                 )
 
             st.markdown("</div>", unsafe_allow_html=True)
-#11111111111111111111111111
-            col1, col2, col3 = st.columns(3)
+
+           
+            # 📊 Visualization + Insights Section
+            
+
+            st.markdown("""
+                <style>
+                    /* Make alert box text fully visible */
+                    .stAlert p {
+                        color: #222 !important;
+                        font-weight: 500;
+                    }
+                    /* Ensure headings are bold and readable */
+                    h3, h4, h5 {
+                        color: #1a1a1a !important;
+                        font-weight: 700 !important;
+                    }
+                    /* Adjust layout spacing */
+                    .block-container {
+                        padding-top: 1rem;
+                        padding-bottom: 2rem;
+                    }
+                </style>
+            """, unsafe_allow_html=True)
+
+            # Layout for charts
+            col1, col2, col3 = st.columns([1, 1, 1], gap="large")
+
+            
+            # COLUMN 1: Model Prediction Probabilities
+            
             with col1:
                 st.markdown("### 📊 Prediction Probabilities")
-                st.markdown(" ")
-                st.markdown(" ")
                 prob_df = pd.DataFrame({"Category": le.classes_, "Probability": probs})
-                st.altair_chart(
-                    alt.Chart(prob_df).mark_bar().encode(
-                        x=alt.X("Category:N", sort=le.classes_, title="AQI Category"),
-                        y=alt.Y("Probability:Q", title="Prediction Probability", scale=alt.Scale(domain=[0,1])),
-                        color=alt.value("#1f77b4")
-                    ).properties(width=350, height=350), use_container_width=True)
 
+                base_chart = alt.Chart(prob_df).mark_bar(size=40).encode(
+                    x=alt.X("Category:N", sort=le.classes_, title="AQI Category"),
+                    y=alt.Y("Probability:Q", title="Prediction Probability", scale=alt.Scale(domain=[0, 1])),
+                    color=alt.Color("Category:N", legend=None)
+                ).properties(width=350, height=350)
+
+                text_labels = base_chart.mark_text(
+                    align="center", baseline="bottom", dy=-5, size=12, color="black"
+                ).encode(text=alt.Text("Probability:Q", format=".2f"))
+
+                st.altair_chart(base_chart + text_labels, use_container_width=True)
+
+            
+            # COLUMN 2: Pollutant vs WHO Safe Limits
+            
             with col2:
                 st.markdown("### 📊 Pollutant Levels vs WHO Guidelines")
                 safe_limits = {"pm25": 25, "pm10": 50, "no2": 40, "co": 10}
@@ -393,25 +429,79 @@ else:
                     "Pollutant": list(safe_limits.keys()),
                     "Input Value": [pm25, pm10, no2, co],
                     "Safe Limit": list(safe_limits.values())
-                })
-                st.altair_chart(
-                    alt.Chart(comp_df).transform_fold(
-                        ["Input Value", "Safe Limit"], as_=["Type", "Value"]
-                    ).mark_bar().encode(
-                        x=alt.X("Pollutant:N"),
-                        y=alt.Y("Value:Q"),
-                        color="Type:N"
-                    ).properties(width=350, height=350), use_container_width=True)
+                }).fillna(0).astype({"Pollutant": str, "Input Value": float, "Safe Limit": float})
 
+                comp_folded = comp_df.melt(id_vars=["Pollutant"],
+                                        value_vars=["Input Value", "Safe Limit"],
+                                        var_name="Type",
+                                        value_name="Value")
+
+                comp_chart = (
+                    alt.Chart(comp_folded)
+                    .mark_bar(size=40)
+                    .encode(
+                        x=alt.X("Pollutant:N", title="Pollutant", axis=alt.Axis(labelAngle=0)),
+                        y=alt.Y("Value:Q", title="Concentration (µg/m³ or mg/m³)"),
+                        color=alt.Color("Type:N", title="Category"),
+                        tooltip=["Pollutant:N", "Type:N", "Value:Q"]
+                    )
+                    .properties(width=350, height=350)
+                )
+                st.altair_chart(comp_chart, use_container_width=True)
+
+           
+            # COLUMN 3: Location Map
+           
             with col3:
                 st.markdown("### 🌍 Location of Input Coordinates")
                 map_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
                 view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=6, pitch=0)
-                layer = pdk.Layer("ScatterplotLayer", data=map_df,
-                                get_position='[lon, lat]', get_color='[200, 30, 0, 160]', get_radius=40000)
-                r = pdk.Deck(layers=[layer], initial_view_state=view_state,
-                            tooltip={"text": "📍 {lat}, {lon}"})
-                st.pydeck_chart(r, use_container_width=True)  # Removed height parameter
+                layer = pdk.Layer(
+                    "ScatterplotLayer", data=map_df,
+                    get_position='[lon, lat]',
+                    get_color='[200, 30, 0, 160]',
+                    get_radius=40000
+                )
+                r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "📍 {lat}, {lon}"})
+                st.pydeck_chart(r, use_container_width=True, height=350)  
+
+           
+            
+            
+            st.markdown("### 🧠 Insight Summary")
+
+            
+            top_category_idx = probs.argmax()
+            top_category = le.classes_[top_category_idx]
+            confidence = probs[top_category_idx] * 100
+
+            st.markdown(
+                f"**Model Confidence:** The system is **{confidence:.1f}% confident** that the air quality belongs to the **{top_category}** category."
+            )
+
+            
+            pollutant_alerts = [
+                p for p, val in zip(["PM2.5","PM10","NO₂","CO"], [pm25, pm10, no2, co])
+                if val > {"PM2.5":25,"PM10":50,"NO₂":40,"CO":10}[p]
+            ]
+
+            if pollutant_alerts:
+                st.warning(f"⚠️ Pollutants exceeding WHO limits: {', '.join(pollutant_alerts)} — likely cause of the {top_category} classification.")
+            else:
+                st.success("✅ All pollutants are within WHO limits — air quality is safe and healthy.")
+
+            
+            # 🩺 Health Advisory
+         
+            st.markdown("### 🩺 Health Advisory")
+
+            if top_category in ["Good", "Moderate"]:
+                st.info("🌿 Air quality is satisfactory. You may continue outdoor activities normally.")
+            elif top_category in ["Unhealthy for Sensitive", "Unhealthy"]:
+                st.warning("😷 Sensitive groups (children, elderly, asthmatics) should reduce outdoor exposure and use masks.")
+            else:
+                st.error("🚨 Hazardous air detected. Avoid outdoor activities, close windows, and use air purifiers indoors.")
+                            
 
    
     def generate_pdf(results, filename="aqi_batch_report.pdf"):
@@ -465,7 +555,7 @@ else:
             elif col == "Explanation":
                 col_widths.append(page_width * 0.17)
             elif col == "Predicted_AQI_Category":
-                col_widths.append(page_width * 0.20)  # give more space to category
+                col_widths.append(page_width * 0.20)  
             else:
                 col_widths.append(page_width * 0.33 / (len(results.columns) - 3))  
 
@@ -530,7 +620,7 @@ with tab2:
             "text/csv"
         )
 
-        # PDF Download - FIXED: Define pdf_buffer here
+        # PDF Download 
         pdf_buffer = generate_pdf(results)
         st.download_button(
             "📑 Download PDF Report",
