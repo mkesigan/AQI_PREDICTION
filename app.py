@@ -272,9 +272,9 @@ else:
                 "Unknown": "❓"
             }
 
-            # Choose which style you prefer (colors or icons) - using colors here
+           
             sign = category_colors.get(category, "⚫")
-            # OR use icons: sign = category_icons.get(category, "❓")
+            
 
             st.markdown(f"### {sign} Predicted Category: **{category}**")
             st.markdown(f"**Predicted AQI Value: {aqi_value}**")
@@ -583,48 +583,48 @@ else:
 
 # Inside your batch prediction tab
 
-with tab2:
-    st.subheader("📂 Upload CSV/XLSX for Batch Prediction")
-    uploaded = st.file_uploader("Upload file", type=["csv", "xlsx"])
+    with tab2:
+        st.subheader("📂 Upload CSV/XLSX for Batch Prediction")
+        uploaded = st.file_uploader("Upload file", type=["csv", "xlsx"])
 
-    if uploaded is not None:
-        if uploaded.name.endswith(".csv"):
-            data = pd.read_csv(uploaded)
-        else:
-            data = pd.read_excel(uploaded)
+        if uploaded is not None:
+            if uploaded.name.endswith(".csv"):
+                data = pd.read_csv(uploaded)
+            else:
+                data = pd.read_excel(uploaded)
 
-        st.markdown("### 📊 Preview of Uploaded Data")
-        st.dataframe(data.head())
+            st.markdown("### 📊 Preview of Uploaded Data")
+            st.dataframe(data.head())
 
-        # Predictions
-        preds = model.predict(data)
-        categories = le.inverse_transform(preds)
+            # Predictions
+            preds = model.predict(data)
+            categories = le.inverse_transform(preds)
 
-        results = data.copy()
-        results["Predicted_AQI_Category"] = categories
-        results["Explanation"] = results["Predicted_AQI_Category"].apply(
-            lambda c: f"AQI falls in {c} range {AQI_RANGES.get(c,(0,0))}"
-        )
-        results["Recommendations"] = results["Predicted_AQI_Category"].apply(
-            lambda c: " | ".join(RECOMMENDATIONS.get(c, ["No recommendation available"]))
-        )
+            results = data.copy()
+            results["Predicted_AQI_Category"] = categories
+            results["Explanation"] = results["Predicted_AQI_Category"].apply(
+                lambda c: f"AQI falls in {c} range {AQI_RANGES.get(c,(0,0))}"
+            )
+            results["Recommendations"] = results["Predicted_AQI_Category"].apply(
+                lambda c: " | ".join(RECOMMENDATIONS.get(c, ["No recommendation available"]))
+            )
 
-        st.markdown("### 📊 Prediction Results")
-        st.dataframe(results.head())
+            st.markdown("### 📊 Prediction Results")
+            st.dataframe(results.head())
 
-        # CSV Download
-        st.download_button(
-            "📥 Download CSV Results",
-            results.to_csv(index=False),
-            "aqi_batch_results.csv",
-            "text/csv"
-        )
+            # CSV Download
+            st.download_button(
+                "📥 Download CSV Results",
+                results.to_csv(index=False),
+                "aqi_batch_results.csv",
+                "text/csv"
+            )
 
-        # PDF Download 
-        pdf_buffer = generate_pdf(results)
-        st.download_button(
-            "📑 Download PDF Report",
-            data=pdf_buffer,
-            file_name="aqi_batch_report.pdf",
-            mime="application/pdf"
-        )
+            # PDF Download 
+            pdf_buffer = generate_pdf(results)
+            st.download_button(
+                "📑 Download PDF Report",
+                data=pdf_buffer,
+                file_name="aqi_batch_report.pdf",
+                mime="application/pdf"
+            )
